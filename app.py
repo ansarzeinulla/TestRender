@@ -1,4 +1,7 @@
-import os
+import nest_asyncio
+nest_asyncio.apply()
+
+import asyncio
 from datetime import datetime
 from flask import Flask
 from telegram import Update
@@ -10,10 +13,11 @@ from telegram.ext import (
     CommandHandler,
 )
 import threading
+import os
 
 # --- Настройки ---
-TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = int(os.getenv("CHAT_ID", "0"))
+TOKEN = "7979735611:AAEaLiilXvzzKucfxEghYAf_VNZNvmAJzdI"
+CHAT_ID = 1154455614  # <-- Твой chat_id
 
 # --- Flask app для Render healthcheck ---
 flask_app = Flask(__name__)
@@ -22,9 +26,12 @@ flask_app = Flask(__name__)
 def health():
     return "OK", 200
 
-# --- Telegram бот ---
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5050)))
+
+# --- Telegram логика ---
 message_count = 0
-lock = threading.Lock()  # защита от многопоточности
+lock = threading.Lock()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Бот активен. Я считаю сообщения 🧮")
@@ -45,24 +52,18 @@ async def report(context: ContextTypes.DEFAULT_TYPE):
         text=f"📊 {date}: получено {count} сообщений за день.",
     )
 
-# --- Основной запуск ---
 async def main():
-    application = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, count))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, count))
+    app.job_queue.run_daily(
+        report,
+        time=datetime.utcnow().replace(hour=21, minute=0, second=0)
+    )
 
-    # Планировщик отчётов — каждые сутки в 21:00 (по UTC)
-    application.job_queue.run_daily(report, time=datetime.utcnow().replace(hour=21, minute=0, second=0))
+    await app.run_polling()
 
-    await application.run_polling()
-
-# --- Запуск Flask и Telegram параллельно ---
 if __name__ == "__main__":
-    import asyncio
-    import threading
-
-    telegram_thread = threading.Thread(target=lambda: asyncio.run(main()))
-    telegram_thread.start()
-
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    threading.Thread(target=run_flask).start()
+    asyncio.run(main())
