@@ -27,9 +27,9 @@ lock = threading.Lock()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Бот активен. Я считаю сообщения 🧮")
-    async def report(context: ContextTypes.DEFAULT_TYPE):
+
+async def report(context: ContextTypes.DEFAULT_TYPE):
         text=f"📊 {date}: получено {count} сообщений за день.",
-    )
 
 
 async def main():
