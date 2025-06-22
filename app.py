@@ -4,9 +4,7 @@ nest_asyncio.apply()
 import asyncio
 from datetime import datetime
 from flask import Flask
-from telegram import Update
-    CommandHandler,
-)
+from telegram import Update, CommandHandler
 import threading
 import os
 
